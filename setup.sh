@@ -100,7 +100,7 @@ if [[ -e "$HERMES_HOME/config.yaml" && "${SKIP_INITIAL_SNAPSHOT:-}" != "1" ]]; t
   echo "== initial brain snapshot -> $OWNER/$PRIV (PRIVATE) =="
   tmp="$(mktemp -d)"
   BRAIN_REPO="$OWNER/$PRIV" BRAIN_TOKEN="$GH_PAT" HERMES_HOME="$HERMES_HOME" \
-    bash "$DIR/brain.sh" snapshot "$tmp" || echo "WARN: initial snapshot failed"
+    bash "$DIR/scripts/brain.sh" snapshot "$tmp" || echo "WARN: initial snapshot failed"
   rm -rf "$tmp"
 else
   echo "== skipped initial brain snapshot =="
