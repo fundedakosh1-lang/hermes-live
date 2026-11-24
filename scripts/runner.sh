@@ -33,13 +33,21 @@ command -v hermes >/dev/null 2>&1 || { log "FATAL: hermes not installed"; exit 1
 log "hermes ready"
 
 # 3. start gateway
+# The gateway re-execs through a python wrapper whose argv ends with
+# "... main() gateway run --replace", so match on "gateway run".
+gw_alive() { pgrep -f "gateway run" >/dev/null 2>&1; }
+
 start_gateway() {
+  if gw_alive; then log "gateway already running"; return 0; fi
   nohup hermes gateway run --replace >>"$LOG" 2>&1 &
   sleep 20
-  if pgrep -f "hermes gateway" >/dev/null; then
+  if gw_alive; then
     log "gateway up"
   else
     log "WARN: gateway not detected, see $LOG"
+    echo "----- gateway log (last 60) -----"
+    tail -n 60 "$LOG" 2>/dev/null || true
+    echo "---------------------------------"
   fi
 }
 start_gateway
@@ -49,7 +57,7 @@ start=$(date +%s); last_snap=$start; restarts=0
 while :; do
   sleep 60
   now=$(date +%s); elapsed=$((now - start))
-  if ! pgrep -f "hermes gateway" >/dev/null; then
+  if ! gw_alive; then
     if (( restarts < 3 )); then
       restarts=$((restarts + 1)); log "gateway down -> restart $restarts"; start_gateway
     else
