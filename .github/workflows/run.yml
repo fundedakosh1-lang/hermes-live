@@ -1,0 +1,27 @@
+name: hermes-live
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: hermes-live
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      HERMES_HOME: /home/runner/.hermes
+      BRAIN_REPO: fundedakosh1-lang/hermes-brain
+      BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+      RUN_MINUTES: "315"
+      SNAPSHOT_INTERVAL: "600"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Hermes live
+        run: bash scripts/runner.sh

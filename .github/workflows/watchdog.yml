@@ -1,0 +1,38 @@
+name: hermes-watchdog
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+
+jobs:
+  ensure-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch hermes-live if no recent run
+        env:
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          STALE_MIN: "75"
+        run: |
+          set -eu
+          repo="${GITHUB_REPOSITORY}"
+          runs=$(curl -sS -H "Authorization: Bearer ${BRAIN_TOKEN}" \
+            "https://api.github.com/repos/${repo}/actions/workflows/run.yml/runs?per_page=1")
+          status=$(printf '%s' "$runs" | jq -r '.workflow_runs[0].status // "none"')
+          case "$status" in
+            completed|none) : ;;
+            *) echo "live run active ($status) - nothing to do"; exit 0 ;;
+          esac
+          created=$(printf '%s' "$runs" | jq -r '.workflow_runs[0].created_at // "2000-01-01T00:00:00Z"')
+          age_min=$(( ( $(date +%s) - $(date -d "$created" +%s) ) / 60 ))
+          echo "last run: status=$status created=$created age=${age_min}m"
+          if [ "$age_min" -lt "$STALE_MIN" ]; then echo "recent enough - skipping"; exit 0; fi
+          echo "dispatching hermes-live..."
+          curl -sS -o /dev/null -w 'dispatch HTTP %{http_code}\n' -X POST \
+            -H "Authorization: Bearer ${BRAIN_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${repo}/actions/workflows/run.yml/dispatches" \
+            -d '{"ref":"main"}'
